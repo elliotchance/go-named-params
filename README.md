@@ -23,7 +23,7 @@ go get github.com/elliotchance/go-named-params
 You need to include two lines at the top of each file:
 
 ```go
-//go:generate python $GOPATH/src/github.com/elliotchance/go-named-params/compile.py $GOFILE
+//go:generate $GOPATH/bin/go-named-params $GOFILE
 // +build ignore
 ```
 
