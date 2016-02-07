@@ -39,17 +39,32 @@ func stripGoGenerateAndBuildIgnore(str string) string {
 //     [][]string{[]string{"a", " int"}, []string{"b", " int"}}
 //
 // We cannot use a map becuase the order of the keys are not preserved in Go.
-func getParameters(str string) [][]string {
+func getParameters(str string, isDefinition bool) [][]string {
 	var params [][]string
+	var re *regexp.Regexp
 
-	splitRe := regexp.MustCompile(",?\\s*[a-zA-Z0-9_]+\\s*:")
-	arguments := SplitOnRegexpIncludingDelimiter(splitRe, str)
+	if isDefinition {
+		re = regexp.MustCompile(",?\\s*([a-zA-Z0-9_\\s,]+):([^,]+)")
+	} else {
+		re = regexp.MustCompile(",?\\s*([a-zA-Z0-9_]+)\\s*:")
+	}
+
+	arguments := SplitOnRegexpIncludingDelimiter(re, str)
 	for _, argument := range arguments {
-		re := regexp.MustCompile(",?\\s*([a-zA-Z0-9_]+)\\s*:(.*)")
+		if !isDefinition {
+			re = regexp.MustCompile(",?\\s*([a-zA-Z0-9_]+)\\s*:(.*)")
+		}
 		groups := re.FindAllStringSubmatch(argument, -1)
 
 		if len(groups) > 0 {
-			params = append(params, []string{groups[0][1], groups[0][2]})
+			if isDefinition {
+				individualParams := strings.Split(groups[0][1], ",")
+				for _, individualParam := range individualParams {
+					params = append(params, []string{strings.TrimSpace(individualParam), groups[0][2]})
+				}
+			} else {
+				params = append(params, []string{groups[0][1], groups[0][2]})
+			}
 		}
 	}
 
@@ -57,12 +72,15 @@ func getParameters(str string) [][]string {
 }
 
 func replaceFunctionDefinitions(contents string) string {
-	search := regexp.MustCompile("func\\s+([a-zA-Z0-9_]+)\\(([a-zA-Z0-9_]+\\s*:.*)\\)")
+	search := regexp.MustCompile("func\\s+([a-zA-Z0-9_]+)\\(([a-zA-Z0-9_\\s,]+:.*)\\)")
 	return ReplaceAllGroupFunc(search, contents, func(groups []string) string {
-		params := getParameters(groups[2])
+		params := getParameters(groups[2], true)
 		definition := "func " + groups[1]
 		for _, value := range params {
-			definition += "_" + value[0]
+			individualValues := strings.Split(value[0], ",")
+			for _, individualValue := range individualValues {
+				definition += "_" + individualValue
+			}
 		}
 		definition += "("
 		first := true
@@ -105,7 +123,7 @@ func replaceFunctionInvocations(str string) string {
 	for depth := maxDepth; depth >= 0; depth -= 1 {
 		search := regexp.MustCompile(fmt.Sprintf("([a-zA-Z0-9_]*)~%d~(.*)~%d~", depth, depth))
 		str = ReplaceAllGroupFunc(search, str, func(groups []string) string {
-			params := getParameters(groups[2])
+			params := getParameters(groups[2], false)
 			definition := groups[1]
 			for _, value := range params {
 				definition += "_" + value[0]

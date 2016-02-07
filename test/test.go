@@ -16,9 +16,10 @@ package main
 //     2: multiple arguments
 //     3: multiword argument
 //     4: return value
+//     5: multiple arguments short syntax
 //
 // The functions themselves do not contain any body becuase if something goes
-// wrong with the regular expression replacing the compiler will throw an error.
+// wrong with the regular expression, the compiler will throw an error.
 
 // These things are pure Go, they are here as to make sure that the parser
 // doesn't mess with any of the existing syntax:
@@ -33,6 +34,9 @@ func anon13(c chan int) {
 func anon14(a int, b int) int {
   return a + b
 }
+func anon15(a, b int, c string) int {
+  return a + b * len(c)
+}
 
 // Here are the versions with the named parameters:
 func named11(name: string) {
@@ -43,6 +47,9 @@ func named13(c: chan int) {
 }
 func named14(a: int, b: int) int {
   return a + b
+}
+func named15(a, b: int, c: string) int {
+  return a + b * len(c)
 }
 
 // Helper functions
@@ -62,12 +69,16 @@ func main() {
   anon13(make(chan int))
   result = anon14(3, 5)
   check(result, 8)
+  result = anon15(3, 2, "foo")
+  check(result, 9)
 
   named11(name: "bob")
   named12(a: 3, b: 2)
   named13(c: make(chan int))
   result = named14(a: 2, b: 3)
   check(result, 5)
+  result = named15(a: 3, b: 2, c: "foo")
+  check(result, 9)
 
   // Different combinations of nesting.
   result = named14(a: named14(a: 7, b: 4), b: 2)
