@@ -39,31 +39,18 @@ func stripGoGenerateAndBuildIgnore(str string) string {
 //     [][]string{[]string{"a", " int"}, []string{"b", " int"}}
 //
 // We cannot use a map becuase the order of the keys are not preserved in Go.
-func getParameters(str string, isDefinition bool) [][]string {
+func getParametersFromDefinition(str string) [][]string {
 	var params [][]string
-	var re *regexp.Regexp
 
-	if isDefinition {
-		re = regexp.MustCompile(",?\\s*([a-zA-Z0-9_\\s,]+):([^,]+)")
-	} else {
-		re = regexp.MustCompile(",?\\s*([a-zA-Z0-9_]+)\\s*:")
-	}
-
+	re := regexp.MustCompile(",?([a-zA-Z0-9_\\s,]+):([^,]+)")
 	arguments := SplitOnRegexpIncludingDelimiter(re, str)
 	for _, argument := range arguments {
-		if !isDefinition {
-			re = regexp.MustCompile(",?\\s*([a-zA-Z0-9_]+)\\s*:(.*)")
-		}
 		groups := re.FindAllStringSubmatch(argument, -1)
 
 		if len(groups) > 0 {
-			if isDefinition {
-				individualParams := strings.Split(groups[0][1], ",")
-				for _, individualParam := range individualParams {
-					params = append(params, []string{strings.TrimSpace(individualParam), groups[0][2]})
-				}
-			} else {
-				params = append(params, []string{groups[0][1], groups[0][2]})
+			individualParams := strings.Split(groups[0][1], ",")
+			for _, individualParam := range individualParams {
+				params = append(params, []string{individualParam, groups[0][2]})
 			}
 		}
 	}
@@ -71,16 +58,30 @@ func getParameters(str string, isDefinition bool) [][]string {
 	return params
 }
 
+func getParametersFromInvocation(str string) [][]string {
+	var params [][]string
+
+	re := regexp.MustCompile("(?m),?([a-zA-Z0-9_\\s]+):")
+	arguments := SplitOnRegexpIncludingDelimiter(re, str)
+	for _, argument := range arguments {
+		re = regexp.MustCompile("(?ms),?([a-zA-Z0-9_\\s]+):(.*)")
+		groups := re.FindAllStringSubmatch(argument, -1)
+
+		if len(groups) > 0 {
+			params = append(params, []string{groups[0][1], groups[0][2]})
+		}
+	}
+
+	return params
+}
+
 func replaceFunctionDefinitions(contents string) string {
-	search := regexp.MustCompile("func\\s+([a-zA-Z0-9_]+)\\(([a-zA-Z0-9_\\s,]+:.*)\\)")
+	search := regexp.MustCompile("(?msU)func\\s+([a-zA-Z0-9_]+)\\(([a-zA-Z0-9_\\s,]+:.*)\\)")
 	return ReplaceAllGroupFunc(search, contents, func(groups []string) string {
-		params := getParameters(groups[2], true)
+		params := getParametersFromDefinition(groups[2])
 		definition := "func " + groups[1]
 		for _, value := range params {
-			individualValues := strings.Split(value[0], ",")
-			for _, individualValue := range individualValues {
-				definition += "_" + individualValue
-			}
+			definition += "_" + strings.TrimSpace(value[0])
 		}
 		definition += "("
 		first := true
@@ -89,7 +90,7 @@ func replaceFunctionDefinitions(contents string) string {
 				definition += ", "
 			}
 			first = false
-			definition += value[0] + " " + strings.TrimSpace(value[1])
+			definition += value[0] + " " + value[1]
 		}
 		return definition + ")"
 	})
@@ -177,12 +178,12 @@ func replaceFunctionInvocations(str string) string {
 	str, maxDepth := prepareBrackets(str)
 
 	for depth := maxDepth; depth >= 0; depth -= 1 {
-		search := regexp.MustCompile(fmt.Sprintf("([a-zA-Z0-9_]*)~%d~(.*)~%d~", depth, depth))
+		search := regexp.MustCompile(fmt.Sprintf("(?imsU)([a-z0-9_]*)~%d~(.*)~%d~", depth, depth))
 		str = ReplaceAllGroupFunc(search, str, func(groups []string) string {
-			params := getParameters(groups[2], false)
+			params := getParametersFromInvocation(groups[2])
 			definition := groups[1]
 			for _, value := range params {
-				definition += "_" + value[0]
+				definition += "_" + strings.TrimSpace(value[0])
 			}
 			definition += "("
 
@@ -192,12 +193,23 @@ func replaceFunctionInvocations(str string) string {
 					if !first {
 						definition += ", "
 					}
+
+					if strings.Count(value[0], "\n") > 0 {
+					 	definition += "\n"
+					}
+
 					first = false
-					definition += strings.TrimSpace(value[1])
+					definition += value[1]
 				}
 			} else {
 				definition += groups[2]
 			}
+
+			// A statement may be multiline. The regex can pull out the data it needs
+			// to translate the invocation, but the newlines will get mangled. It
+			// would be very complicated to try and maintain them from the regex, so
+			// instead we count the total lines and add some spacing at the end to
+			// compensate.
 
 			return definition + ")"
 		})

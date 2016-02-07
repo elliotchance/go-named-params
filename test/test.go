@@ -43,14 +43,16 @@ func anon10() {
 }
 func anon11(name string) {
 }
-func anon12(a int, b int) {
+func anon12(a int,
+  b int) {
 }
 func anon13(c chan int) {
 }
 func anon14(a int, b int) int {
   return a + b
 }
-func anon15(a, b int, c string) int {
+func anon15(a,
+  b int, c string) int {
   return a + b * len(c)
 }
 
@@ -59,14 +61,16 @@ func anon15(a, b int, c string) int {
 
 func named11(name: string) {
 }
-func named12(a: int, b: int) {
+func named12(a: int,
+  b: int) {
 }
 func named13(c: chan int) {
 }
 func named14(a: int, b: int) int {
   return a + b
 }
-func named15(a, b: int, c: string) int {
+func named15(a,
+  b: int, c: string) int {
   return a + b * len(c)
 }
 
@@ -118,4 +122,11 @@ func main() {
   check(result, 10)
   result = ((((((((1 + 3))))))))
   check(result, 4)
+
+  // Combinations of new lines.
+  anon10(
+  )
+  named12(
+    a: 3, b: (2 + 3),
+  )
 }
