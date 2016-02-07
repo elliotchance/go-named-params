@@ -95,6 +95,44 @@ func replaceFunctionDefinitions(contents string) string {
 	})
 }
 
+func skipPrefixUntilSuffix(str, out, prefix, suffix string, i int) (int, string) {
+	if i < len(str) - len(prefix) && str[i:i + len(prefix)] == prefix {
+		for str[i:i + len(suffix)] != suffix {
+			out += string(str[i])
+			i++
+		}
+	}
+
+	return i, out
+}
+
+func skipStrings(str, out string, i int) (int, string) {
+	var c byte
+	if str[i] == '"' || str[i] == '\'' {
+		c = str[i]
+	} else {
+		return i, out
+	}
+
+	i++
+	out += string(c)
+	for {
+		if str[i] == '\\' {
+			out += string(str[i:i + 2])
+			i++
+		} else if str[i] == c {
+			break
+		} else {
+			out += string(str[i])
+		}
+		i++
+	}
+	i++
+	out += string(c)
+
+	return i, out
+}
+
 // To allow the regular expressions to work recursively we need to replace all
 // the opening and closing parenthesis with a depth indicator then apply the
 // regular expression starting with the deepest first.
@@ -111,19 +149,13 @@ func prepareBrackets(str string) (string, int) {
 	out := ""
 	for i := 0; i < len(str); i++ {
 		// Skip comments.
-		if str[i] == '/' && str[i + 1] == '/' {
-			for str[i] != '\n' {
-				out += string(str[i])
-				i++
-			}
-		}
-		if str[i] == '/' && str[i + 1] == '*' {
-			for str[i] != '*' || str[i + 1] != '/' {
-				out += string(str[i])
-				i++
-			}
-		}
+		i, out = skipPrefixUntilSuffix(str, out, "//", "\n", i)
+		i, out = skipPrefixUntilSuffix(str, out, "/*", "*/", i)
 
+		// Skip strings and characters.
+		i, out = skipStrings(str, out, i)
+
+		// Everything else.
 		if str[i] == '(' {
 			out += fmt.Sprintf("~%d~", depth)
 			depth += 1

@@ -80,6 +80,12 @@ func check(result, expectedResult int) {
 func main() {
   var result int
 
+  // Ignore brackets in strings and characters
+  anon11("a(a")
+  anon11(string('('))
+  anon11("a(\"a")
+  anon11(string('\''))
+
   // Simply calling them.
   anon10()
   anon11("bob")
