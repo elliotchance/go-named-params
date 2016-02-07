@@ -1,5 +1,5 @@
-//go:generate python $GOPATH/src/github.com/elliotchance/go-named-params/compile.py $GOFILE
-// +build ignore
+//
+//
 
 package main
 
@@ -57,16 +57,16 @@ func anon15(a, b int, c string) int {
 // Named Parameters
 // ================
 
-func named11(name: string) {
+func named11_name(name string) {
 }
-func named12(a: int, b: int) {
+func named12_a_b(a int, b int) {
 }
-func named13(c: chan int) {
+func named13_c(c chan int) {
 }
-func named14(a: int, b: int) int {
+func named14_a_b(a int, b int) int {
   return a + b
 }
-func named15(a, b: int, c: string) int {
+func named15_a_b_c(a int, b int, c string) int {
   return a + b * len(c)
 }
 
@@ -90,24 +90,24 @@ func main() {
   result = anon15(3, 2, "foo")
   check(result, 9)
 
-  named11(name: "bob")
-  named12(a: 3, b: 2)
-  named13(c: make(chan int))
-  result = named14(a: 2, b: 3)
+  named11_name("bob")
+  named12_a_b(3, 2)
+  named13_c(make(chan int))
+  result = named14_a_b(2, 3)
   check(result, 5)
-  result = named15(a: 3, b: 2, c: "foo")
+  result = named15_a_b_c(3, 2, "foo")
   check(result, 9)
 
   // Different combinations of nesting.
-  result = named14(a: named14(a: 7, b: 4), b: 2)
+  result = named14_a_b(named14_a_b(7, 4), 2)
   check(result, 13)
-  result = named14(a: anon14(7, 4), b: 2)
+  result = named14_a_b(anon14(7, 4), 2)
   check(result, 13)
-  result = anon14(named14(a: 7, b: 4), 2)
+  result = anon14(named14_a_b(7, 4), 2)
   check(result, 13)
 
   // Grouping brackets should not be affected.
-  named12(a: 3, b: (2 + 3))
+  named12_a_b(3, (2 + 3))
   result = (5 * 2)
   check(result, 10)
   result = ((((((((1 + 3))))))))

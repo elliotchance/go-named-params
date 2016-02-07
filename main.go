@@ -95,22 +95,46 @@ func replaceFunctionDefinitions(contents string) string {
 	})
 }
 
+// To allow the regular expressions to work recursively we need to replace all
+// the opening and closing parenthesis with a depth indicator then apply the
+// regular expression starting with the deepest first.
+//
+// The opening and closing parenthesis use the same syntax to indicate the
+// depth: `~depth~` where `((1 + 2) * 3)` would translate to
+// `~0~~1~1 + 2~1~ * 3~0~`.
+//
+// It is also context aware in that it will not replace brackets that are found
+// in comments and strings.
 func prepareBrackets(str string) (string, int) {
 	depth := 0
 	maxDepth := 0
 	out := ""
-	for _, c := range str {
-		if c == '(' {
+	for i := 0; i < len(str); i++ {
+		// Skip comments.
+		if str[i] == '/' && str[i + 1] == '/' {
+			for str[i] != '\n' {
+				out += string(str[i])
+				i++
+			}
+		}
+		if str[i] == '/' && str[i + 1] == '*' {
+			for str[i] != '*' || str[i + 1] != '/' {
+				out += string(str[i])
+				i++
+			}
+		}
+
+		if str[i] == '(' {
 			out += fmt.Sprintf("~%d~", depth)
 			depth += 1
 			if depth > maxDepth {
 				maxDepth = depth
 			}
-		} else if c == ')' {
+		} else if str[i] == ')' {
 			depth -= 1
 			out += fmt.Sprintf("~%d~", depth)
 		} else {
-			out += string(c)
+			out += string(str[i])
 		}
 	}
 
