@@ -83,12 +83,17 @@ func check(result, expectedResult int) {
 
 func main() {
   var result int
+  var str string
 
   // Ignore brackets in strings and characters
   anon11("a(a")
   anon11(string('('))
   anon11("a(\"a")
   anon11(string('\''))
+
+  // Comments inside of strings
+  str = "foo // bar"
+  str = str + "foo /* bar */ baz"
 
   // Simply calling them.
   anon10()
